@@ -2,17 +2,21 @@ package com.example.restoria.ui.screens
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,8 +28,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.FlashOff
 import androidx.compose.material.icons.outlined.FlashOn
-import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,8 +48,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -56,13 +66,18 @@ import com.example.restoria.ui.theme.SurfaceColor
 import com.example.restoria.ui.theme.TextMuted
 import com.example.restoria.ui.theme.TextPrimary
 import com.example.restoria.ui.theme.Turquoise
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun CameraScreen(
     onCloseClick: () -> Unit = {},
     onShutterClick: () -> Unit = {},
     onFlashClick: () -> Unit = {},
-    onGalleryClick: () -> Unit = {}
+    onGalleryClick: () -> Unit = {},
+    onImagePicked: (Uri) -> Unit = {},
+    lastPhotoUri: Uri? = null,
+    onLastPhotoClick: (Uri) -> Unit = {}
 ) {
     val context = LocalContext.current
     val inPreview = LocalInspectionMode.current
@@ -82,14 +97,48 @@ fun CameraScreen(
         if (!hasPermission) launcher.launch(Manifest.permission.CAMERA)
     }
 
+    var camera by remember { mutableStateOf<Camera?>(null) }
+    var flashOn by remember { mutableStateOf(false) }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) onImagePicked(uri)
+    }
+
+    val lastThumb by produceState<ImageBitmap?>(null, lastPhotoUri) {
+        value = lastPhotoUri?.let { uri ->
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        BitmapFactory.decodeStream(
+                            input, null,
+                            BitmapFactory.Options().apply { inSampleSize = 4 }
+                        )
+                    }?.asImageBitmap()
+                }.getOrNull()
+            }
+        }
+    }
+
+    LaunchedEffect(camera, flashOn) {
+        camera?.let {
+            if (it.cameraInfo.hasFlashUnit()) {
+                it.cameraControl.enableTorch(flashOn)
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundBottom)
     ) {
-        // Warstwa 1: podgląd z kamery
         if (hasPermission && !inPreview) {
-            CameraPreview(Modifier.fillMaxSize())
+            CameraPreview(
+                modifier = Modifier.fillMaxSize(),
+                onCameraReady = { camera = it }
+            )
         } else {
             Box(
                 Modifier.fillMaxSize(),
@@ -105,7 +154,6 @@ fun CameraScreen(
             }
         }
 
-        // Warstwa 2: ramka z narożnikami
         CornerFrame(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -115,7 +163,6 @@ fun CameraScreen(
                 .size(width = 360.dp, height = 480.dp)
         )
 
-        // Warstwa 3: góra (X, pigułka, błysk)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -145,10 +192,17 @@ fun CameraScreen(
                     )
                 }
             }
-            RoundIconButton(Icons.Outlined.FlashOn, "Błysk", onFlashClick)
+            RoundIconButton(
+                icon = if (flashOn) Icons.Outlined.FlashOn else Icons.Outlined.FlashOff,
+                description = "Błysk",
+                onClick = {
+                    flashOn = !flashOn
+                    onFlashClick()
+                },
+                active = flashOn
+            )
         }
 
-        // Warstwa 4: dół (miniatura, spust, warstwy)
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -157,28 +211,57 @@ fun CameraScreen(
                 .padding(horizontal = 28.dp, vertical = 28.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+
             Box(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(SurfaceColor)
                     .border(1.dp, Turquoise.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
-                    .clickable(onClick = onGalleryClick),
+                    .clickable(enabled = lastPhotoUri != null) {
+                        lastPhotoUri?.let(onLastPhotoClick)
+                    },
                 contentAlignment = Alignment.Center
             ) {
-                Text("3", color = TextPrimary, style = MaterialTheme.typography.labelLarge)
+                val thumb = lastThumb
+                if (thumb != null) {
+                    Image(
+                        bitmap = thumb,
+                        contentDescription = "Ostatnie zdjęcie",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Icon(
+                        Icons.Outlined.Image,
+                        contentDescription = "Brak zdjęć",
+                        tint = TextMuted,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 ShutterButton(onShutterClick)
             }
-            RoundIconButton(Icons.Outlined.Layers, "Warstwy", {})
+            RoundIconButton(
+                icon = Icons.Outlined.PhotoLibrary,
+                description = "Galeria",
+                onClick = {
+                    onGalleryClick()
+                    galleryLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                }
+            )
         }
     }
 }
 
-/** Podgląd na żywo z kamery (CameraX) osadzony w Compose. */
 @Composable
-private fun CameraPreview(modifier: Modifier = Modifier) {
+private fun CameraPreview(
+    modifier: Modifier = Modifier,
+    onCameraReady: (Camera) -> Unit = {}
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -196,11 +279,12 @@ private fun CameraPreview(modifier: Modifier = Modifier) {
                 }
                 try {
                     provider.unbindAll()
-                    provider.bindToLifecycle(
+                    val cam = provider.bindToLifecycle(
                         lifecycleOwner,
                         CameraSelector.DEFAULT_BACK_CAMERA,
                         preview
                     )
+                    onCameraReady(cam)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -214,13 +298,16 @@ private fun CameraPreview(modifier: Modifier = Modifier) {
 private fun RoundIconButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     description: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    active: Boolean = false
 ) {
     Box(
         modifier = Modifier
             .size(44.dp)
             .clip(CircleShape)
-            .background(Color.Black.copy(alpha = 0.45f))
+            .background(
+                if (active) Turquoise.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.45f)
+            )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -241,7 +328,6 @@ private fun ShutterButton(onClick: () -> Unit) {
     )
 }
 
-/** Cztery turkusowe narożniki (jak w makiecie). */
 @Composable
 private fun CornerFrame(modifier: Modifier = Modifier) {
     Box(

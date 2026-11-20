@@ -1,7 +1,7 @@
 package com.example.restoria
 
+import android.net.Uri
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -10,13 +10,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import com.example.restoria.ui.components.Tab
 import com.example.restoria.ui.screens.CameraScreen
 import com.example.restoria.ui.screens.GalleryScreen
 import com.example.restoria.ui.screens.HomeScreen
 import com.example.restoria.ui.screens.LoginScreen
 import com.example.restoria.ui.screens.RegisterScreen
+import com.example.restoria.ui.screens.RestorationOptionsScreen
 import com.example.restoria.ui.screens.SplashScreen
 import com.example.restoria.ui.theme.RestoriaTheme
 
@@ -26,8 +26,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             RestoriaTheme {
-                val context = LocalContext.current
                 var screen by remember { mutableStateOf("splash") }
+                var selectedPhoto by remember { mutableStateOf<Uri?>(null) }
 
                 val onTabClick: (Tab) -> Unit = { tab ->
                     when (tab) {
@@ -36,8 +36,12 @@ class MainActivity : ComponentActivity() {
                         else -> {}
                     }
                 }
+
                 BackHandler(enabled = screen == "camera" || screen == "gallery") {
                     screen = "home"
+                }
+                BackHandler(enabled = screen == "options") {
+                    screen = "gallery"
                 }
 
                 when (screen) {
@@ -57,11 +61,16 @@ class MainActivity : ComponentActivity() {
                         onTabClick = onTabClick,
                         onCameraClick = { screen = "camera" },
                         onRestoreClick = { uris ->
-                            Toast.makeText(context, "Wybrano zdjęć: ${uris.size}", Toast.LENGTH_SHORT).show()
+                            selectedPhoto = uris.firstOrNull()
+                            screen = "options"
                         }
                     )
                     "camera" -> CameraScreen(
                         onCloseClick = { screen = "home" }
+                    )
+                    "options" -> RestorationOptionsScreen(
+                        photoUri = selectedPhoto,
+                        onBackClick = { screen = "gallery" }
                     )
                 }
             }

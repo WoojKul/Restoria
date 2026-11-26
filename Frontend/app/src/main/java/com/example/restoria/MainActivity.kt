@@ -15,9 +15,11 @@ import com.example.restoria.ui.screens.CameraScreen
 import com.example.restoria.ui.screens.GalleryScreen
 import com.example.restoria.ui.screens.HomeScreen
 import com.example.restoria.ui.screens.LoginScreen
+import com.example.restoria.ui.screens.ProcessingScreen
 import com.example.restoria.ui.screens.RegisterScreen
 import com.example.restoria.ui.screens.RestorationOptionsScreen
 import com.example.restoria.ui.screens.SplashScreen
+import com.example.restoria.ui.screens.rememberFakeProgress
 import com.example.restoria.ui.theme.RestoriaTheme
 
 class MainActivity : ComponentActivity() {
@@ -42,6 +44,9 @@ class MainActivity : ComponentActivity() {
                 }
                 BackHandler(enabled = screen == "options") {
                     screen = "gallery"
+                }
+                BackHandler(enabled = screen == "processing") {
+                    screen = "options"
                 }
 
                 when (screen) {
@@ -70,8 +75,18 @@ class MainActivity : ComponentActivity() {
                     )
                     "options" -> RestorationOptionsScreen(
                         photoUri = selectedPhoto,
-                        onBackClick = { screen = "gallery" }
+                        onBackClick = { screen = "gallery" },
+                        onRestoreClick = { screen = "processing" }
                     )
+                    "processing" -> {
+                        val progress by rememberFakeProgress()
+                        ProcessingScreen(
+                            progress = progress,
+                            photoUri = selectedPhoto,
+                            onCancelClick = { screen = "options" },
+                            onFinished = { screen = "home" }
+                        )
+                    }
                 }
             }
         }

@@ -15,6 +15,7 @@ import com.example.restoria.ui.screens.CameraScreen
 import com.example.restoria.ui.screens.GalleryScreen
 import com.example.restoria.ui.screens.HomeScreen
 import com.example.restoria.ui.screens.LoginScreen
+import com.example.restoria.ui.screens.PhotoDetailsScreen
 import com.example.restoria.ui.screens.ProcessingScreen
 import com.example.restoria.ui.screens.RegisterScreen
 import com.example.restoria.ui.screens.RestorationOptionsScreen
@@ -22,8 +23,6 @@ import com.example.restoria.ui.screens.ResultScreen
 import com.example.restoria.ui.screens.SplashScreen
 import com.example.restoria.ui.screens.rememberFakeProgress
 import com.example.restoria.ui.theme.RestoriaTheme
-import com.example.restoria.ui.screens.PhotoDetailsScreen
-import com.example.restoria.ui.screens.ResultScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,6 +52,9 @@ class MainActivity : ComponentActivity() {
                 }
                 BackHandler(enabled = screen == "result") {
                     screen = "options"
+                }
+                BackHandler(enabled = screen == "details") {
+                    screen = "result"
                 }
 
                 when (screen) {
@@ -90,13 +92,18 @@ class MainActivity : ComponentActivity() {
                             progress = progress,
                             photoUri = selectedPhoto,
                             onCancelClick = { screen = "options" },
-                            onFinished = { screen = "result" }
+                            onFinished = { screen = "result" }   
                         )
                     }
                     "result" -> ResultScreen(
                         photoUri = selectedPhoto,
                         onBackClick = { screen = "options" },
                         onRetryClick = { screen = "options" },
+                        onSaveClick = { screen = "details" }
+                    )
+                    "details" -> PhotoDetailsScreen(
+                        photoUri = selectedPhoto,
+                        onBackClick = { screen = "result" },
                         onSaveClick = { screen = "home" }
                     )
                 }

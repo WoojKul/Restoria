@@ -20,6 +20,7 @@ import com.example.restoria.ui.screens.ProcessingScreen
 import com.example.restoria.ui.screens.RegisterScreen
 import com.example.restoria.ui.screens.RestorationOptionsScreen
 import com.example.restoria.ui.screens.ResultScreen
+import com.example.restoria.ui.screens.SavedScreen
 import com.example.restoria.ui.screens.SplashScreen
 import com.example.restoria.ui.screens.rememberFakeProgress
 import com.example.restoria.ui.theme.RestoriaTheme
@@ -55,6 +56,9 @@ class MainActivity : ComponentActivity() {
                 }
                 BackHandler(enabled = screen == "details") {
                     screen = "result"
+                }
+                BackHandler(enabled = screen == "saved") {
+                    screen = "home"
                 }
 
                 when (screen) {
@@ -92,7 +96,7 @@ class MainActivity : ComponentActivity() {
                             progress = progress,
                             photoUri = selectedPhoto,
                             onCancelClick = { screen = "options" },
-                            onFinished = { screen = "result" }   
+                            onFinished = { screen = "result" }
                         )
                     }
                     "result" -> ResultScreen(
@@ -104,7 +108,18 @@ class MainActivity : ComponentActivity() {
                     "details" -> PhotoDetailsScreen(
                         photoUri = selectedPhoto,
                         onBackClick = { screen = "result" },
-                        onSaveClick = { screen = "home" }
+                        onSaveClick = { screen = "saved" }
+                    )
+                    "saved" -> SavedScreen(
+                        photoUri = selectedPhoto,
+                        onNextPhotoClick = {
+                            selectedPhoto = null
+                            screen = "gallery"
+                        },
+                        onDoneClick = {
+                            selectedPhoto = null
+                            screen = "home"
+                        }
                     )
                 }
             }

@@ -18,6 +18,7 @@ import com.example.restoria.ui.screens.LoginScreen
 import com.example.restoria.ui.screens.ProcessingScreen
 import com.example.restoria.ui.screens.RegisterScreen
 import com.example.restoria.ui.screens.RestorationOptionsScreen
+import com.example.restoria.ui.screens.ResultScreen
 import com.example.restoria.ui.screens.SplashScreen
 import com.example.restoria.ui.screens.rememberFakeProgress
 import com.example.restoria.ui.theme.RestoriaTheme
@@ -50,8 +51,9 @@ class MainActivity : ComponentActivity() {
                 BackHandler(enabled = screen == "processing") {
                     screen = "options"
                 }
-                BackHandler(enabled = screen == "details") {
-                    screen = "result" }
+                BackHandler(enabled = screen == "result") {
+                    screen = "options"
+                }
 
                 when (screen) {
                     "splash" -> SplashScreen(onFinished = { screen = "home" })
@@ -88,19 +90,13 @@ class MainActivity : ComponentActivity() {
                             progress = progress,
                             photoUri = selectedPhoto,
                             onCancelClick = { screen = "options" },
-                            onFinished = { screen = "home" }
+                            onFinished = { screen = "result" }
                         )
                     }
                     "result" -> ResultScreen(
                         photoUri = selectedPhoto,
                         onBackClick = { screen = "options" },
                         onRetryClick = { screen = "options" },
-                        onSaveClick = { screen = "details" }
-                    )
-
-                    "details" -> PhotoDetailsScreen(
-                        photoUri = selectedPhoto,
-                        onBackClick = { screen = "result" },
                         onSaveClick = { screen = "home" }
                     )
                 }

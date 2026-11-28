@@ -266,8 +266,7 @@ private fun OriginalPhotoCard(photoUri: Uri?) {
                     tint = TextPrimary,
                     modifier = Modifier.size(24.dp)
                 )
-                Text("Zdjęcie 1", color = TextPrimary, style = MaterialTheme.typography.titleMedium)
-                Text("oryginał", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Zdjęcie", color = TextPrimary, style = MaterialTheme.typography.titleMedium)
             }
         }
         Pill("Oryginał", Modifier.align(Alignment.TopStart).padding(12.dp))

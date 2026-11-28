@@ -22,6 +22,8 @@ import com.example.restoria.ui.screens.ResultScreen
 import com.example.restoria.ui.screens.SplashScreen
 import com.example.restoria.ui.screens.rememberFakeProgress
 import com.example.restoria.ui.theme.RestoriaTheme
+import com.example.restoria.ui.screens.PhotoDetailsScreen
+import com.example.restoria.ui.screens.ResultScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
